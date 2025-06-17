@@ -85,15 +85,12 @@ def company_financials_tool(input: CompanyFinancialsInput = None, **kwargs) -> d
             return {"error": "No price data available"}
         
         close_price = [item["close"] for item in price_data["prices"]]
-        print("close_price", close_price)
 
         quantiles, mean = CHRONOS_PIPELINE.predict_quantiles(
             context=torch.tensor(close_price),
             prediction_length=15,
             quantile_levels=[0.05, 0.5, 0.95]
         )
-        print("quantiles", quantiles)
-        print("mean", mean)
 
         # Format the response
         result = {

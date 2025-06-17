@@ -501,8 +501,7 @@ async def write_section(state: SectionState, config: RunnableConfig) -> Command[
                 # Parse the tool message content as JSON
                 import json
                 financial_data = json.loads(tool_message.content)
-                # print("Parsed financial data:", financial_data)
-                print("predictons", financial_data.get("predictions", {}))
+                
                 # Format the financial data for the section
                 formatted_data = {
                     "ticker": financial_data.get("ticker", "N/A"),
@@ -512,17 +511,18 @@ async def write_section(state: SectionState, config: RunnableConfig) -> Command[
 
                 predicted_price_rows = ""
 
-                # predicted_prices = financial_data.get("predictions", {}).get("mean", [])
-                # for i, price in enumerate(predicted_prices[0]):
+                # predicted_prices = financial_data.get("predictions", {}).get("mean", [])[0]
+                # for i, price in enumerate(predicted_prices):
                 #     predicted_price_rows += f"Day {i+1}: {price}\n"
+                # n_pred = len(predicted_prices) if financial_data.get("predictions", {}) else 0
 
                 predicted_prices = financial_data.get("predictions", {}).get("quantiles", [])[0]
                 end_date = formatted_data["date_range"].get("end", "N/A")
-                print("end_date", end_date)
+
                 # end_date가 str임을 명확히 하고, 예측 날짜 생성 시 주말 제외
                 pred_dates = []
                 n_pred = len(predicted_prices) if financial_data.get("predictions", {}) else 0
-                print("n_pred", n_pred)
+
                 try:
                     start_pred_date = datetime.strptime(end_date, "%Y-%m-%d")
                     current = start_pred_date
@@ -549,7 +549,7 @@ async def write_section(state: SectionState, config: RunnableConfig) -> Command[
                     price_data_rows="",  # Will be formatted by the LLM
                     start_date=formatted_data["date_range"].get("start", "N/A"),
                     end_date=formatted_data["date_range"].get("end", "N/A"),
-                    prediction_length=15,
+                    prediction_length=n_pred,
                     predicted_price_rows=predicted_price_rows
                 )
                 
