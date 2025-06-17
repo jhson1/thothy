@@ -1,0 +1,10 @@
+{
+  "dependencies": [
+    "."
+  ],
+  "graphs": {
+    "research_graph": "./src/research_graph/graph.py:graph"
+  },
+  "env": ".env",
+  "python_version": "3.12"
+}
