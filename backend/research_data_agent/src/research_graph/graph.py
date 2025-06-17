@@ -1,5 +1,6 @@
 from typing import Literal
 import logging
+from datetime import datetime, timedelta
 
 from langchain.chat_models import init_chat_model
 from langchain_core.messages import HumanMessage, SystemMessage, AIMessage, ToolMessage
@@ -16,6 +17,7 @@ from langgraph.prebuilt.interrupt import (
     HumanResponse,
 )
 from langgraph.prebuilt import ToolNode
+
 
 from research_graph.state import (
     ReportStateInput,
@@ -500,14 +502,45 @@ async def write_section(state: SectionState, config: RunnableConfig) -> Command[
                 import json
                 financial_data = json.loads(tool_message.content)
                 # print("Parsed financial data:", financial_data)
-                
+                print("predictons", financial_data.get("predictions", {}))
                 # Format the financial data for the section
                 formatted_data = {
                     "ticker": financial_data.get("ticker", "N/A"),
                     "prices": financial_data.get("prices", {}),
                     "date_range": financial_data.get("date_range", {})
                 }
-                
+
+                predicted_price_rows = ""
+
+                # predicted_prices = financial_data.get("predictions", {}).get("mean", [])
+                # for i, price in enumerate(predicted_prices[0]):
+                #     predicted_price_rows += f"Day {i+1}: {price}\n"
+
+                predicted_prices = financial_data.get("predictions", {}).get("quantiles", [])[0]
+                end_date = formatted_data["date_range"].get("end", "N/A")
+                print("end_date", end_date)
+                # end_date가 str임을 명확히 하고, 예측 날짜 생성 시 주말 제외
+                pred_dates = []
+                n_pred = len(predicted_prices) if financial_data.get("predictions", {}) else 0
+                print("n_pred", n_pred)
+                try:
+                    start_pred_date = datetime.strptime(end_date, "%Y-%m-%d")
+                    current = start_pred_date
+                    while len(pred_dates) < n_pred:
+                        current += timedelta(days=1)
+                        if current.weekday() < 5:  # 월~금만
+                            pred_dates.append(current.strftime("%Y-%m-%d"))
+                except Exception:
+                    pred_dates = [f"Day {i+1}" for i in range(n_pred)]
+                predicted_price_rows = "| Date | lower_bound | close | upper_bound |\n|-----|------------|-------------|-------|-------------|\n"
+                if financial_data.get("predictions", {}) and len(predicted_prices) > 0:
+                    for i, day_vals in enumerate(predicted_prices):
+                        lower = float(day_vals[0])
+                        close = float(day_vals[1])
+                        upper = float(day_vals[2])
+                        pred_date = pred_dates[i] if i < len(pred_dates) else f"Day {i+1}"
+                        predicted_price_rows += f"| {pred_date} | {lower:.2f} | {close:.2f} | {upper:.2f} |\n"
+
                 # Generate section content using financial data
                 instructions = financial_section_writer_instructions.format(
                     topic=topic,
@@ -515,7 +548,9 @@ async def write_section(state: SectionState, config: RunnableConfig) -> Command[
                     ticker=formatted_data["ticker"],
                     price_data_rows="",  # Will be formatted by the LLM
                     start_date=formatted_data["date_range"].get("start", "N/A"),
-                    end_date=formatted_data["date_range"].get("end", "N/A")
+                    end_date=formatted_data["date_range"].get("end", "N/A"),
+                    prediction_length=15,
+                    predicted_price_rows=predicted_price_rows
                 )
                 
                 section_content = await writer_model.ainvoke([

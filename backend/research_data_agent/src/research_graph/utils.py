@@ -23,6 +23,15 @@ from langchain_core.language_models import BaseChatModel
 
 from research_graph.state import Section
 
+from chronos import BaseChronosPipeline
+import torch
+CHRONOS_PIPELINE = BaseChronosPipeline.from_pretrained(
+    "amazon/chronos-t5-small",
+    device_map="cuda",  # use "cpu" for CPU inference
+    torch_dtype=torch.bfloat16,
+)
+
+
 T = TypeVar('T')
 
 def retry_with_exponential_backoff(

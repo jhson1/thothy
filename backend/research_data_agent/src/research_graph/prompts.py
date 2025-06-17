@@ -49,7 +49,8 @@ For example, a good report structure might look like:
 2/ overview of topic A
 3/ overview of topic B
 4/ comparison between A and B
-5/ conclusion
+5/ financial analysis of A and B
+6/ conclusion
 
 Each section should have the fields:
 
@@ -314,9 +315,12 @@ financial_section_writer_instructions = """Write a financial section that displa
 ### Date Range
 - Start Date: {start_date}
 - End Date: {end_date}
+### Predicted Prices(Close) (Next {prediction_length} Days)
+{predicted_price_rows}
 
 <Note>
 - Display ALL available price data from the API
+- Display predicted prices for the next {prediction_length} days
 - Do not add any analysis or interpretation
 - Do not modify or transform the data
 - If a data point is not available, show "N/A"

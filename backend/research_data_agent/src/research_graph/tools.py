@@ -6,6 +6,9 @@ from pydantic import BaseModel, Field
 from langchain.tools import tool
 from langchain_community.tools.tavily_search import TavilySearchResults
 
+import torch
+from research_graph.utils import CHRONOS_PIPELINE
+
 UI_COMPONENT_NAME = "research_graph"
 
 FINANCIAL_DATASETS_API_KEY = os.getenv("FINANCIAL_DATASETS_API_KEY")
@@ -76,13 +79,22 @@ def company_financials_tool(input: CompanyFinancialsInput = None, **kwargs) -> d
                 "end_date": end_date,
             }
         )
-
-        print("API response:")
         
         if not price_data:
             print("No price data received from API")
             return {"error": "No price data available"}
         
+        close_price = [item["close"] for item in price_data["prices"]]
+        print("close_price", close_price)
+
+        quantiles, mean = CHRONOS_PIPELINE.predict_quantiles(
+            context=torch.tensor(close_price),
+            prediction_length=15,
+            quantile_levels=[0.05, 0.5, 0.95]
+        )
+        print("quantiles", quantiles)
+        print("mean", mean)
+
         # Format the response
         result = {
             "ticker": input.ticker,
@@ -90,6 +102,10 @@ def company_financials_tool(input: CompanyFinancialsInput = None, **kwargs) -> d
             "date_range": {
                 "start": start_date,
                 "end": end_date
+            },
+            "predictions": {
+                "quantiles": quantiles.detach().cpu().numpy().tolist(), 
+                "mean": mean.detach().cpu().numpy().tolist()
             }
         }
         
