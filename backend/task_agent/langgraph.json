@@ -1,0 +1,14 @@
+{
+  "dependencies": [
+    "."
+  ],
+  "graphs": {
+    "task_graph": "./src/task_graph/graph.py:graph"
+  },
+  "auth": {
+    "path": "../security/auth.py:auth",
+    "disable_studio_auth": false
+  },
+  "env": "../../.env",
+  "python_version": "3.12"
+} 

@@ -16,6 +16,8 @@ import { GenericInterruptView } from "./generic-interrupt";
 import { useArtifact } from "../artifact";
 
 import DataGraphComponent from "@/app/agents/data_agent/artifact";
+import DataResearchGraphComponent from "@/app/agents/data_research_agent/artifact";
+import DashboardGraphComponent from "@/app/agents/dashboard_agent/artifact";
 import ResearchGraphComponent from "@/app/agents/research_agent/artifact";
 import SlideBuildGraphComponent from "@/app/agents/slide_build_agent/artifact";
 import SlideGraphComponent from "@/app/agents/slide_agent/artifact";
@@ -40,6 +42,8 @@ function CustomComponent({
 
   const artifactComponents = {
     data_graph: DataGraphComponent,
+    data_research_graph: DataResearchGraphComponent,
+    dashboard_graph: DashboardGraphComponent,
     slide_graph: SlideGraphComponent,
     slide_build_graph: SlideBuildGraphComponent,
     research_graph: ResearchGraphComponent,

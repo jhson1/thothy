@@ -6,9 +6,8 @@ The inbox is a place to store all the messages from agents.
 
 ## Authorized Agents
 
-- 'staff_agent'
-- 'team_agent'
 - 'project_agent'
+- 'team_agent'
 
 ## Usage
 

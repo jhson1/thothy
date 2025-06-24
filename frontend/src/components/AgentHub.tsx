@@ -16,7 +16,6 @@ export default function AgentHub() {
     const { user } = useAuth();
     const [agents, setAgents] = useState<Agent[]>([]);
     const [loading, setLoading] = useState(true);
-    const [selectedAgentIds, setSelectedAgentIds] = useState<Set<string>>(new Set());
 
     useEffect(() => {
         const fetchAgents = async () => {
@@ -33,33 +32,6 @@ export default function AgentHub() {
         };
         fetchAgents();
     }, []);
-
-    useEffect(() => {
-        const fetchSelectedAgents = async () => {
-            if (!user?.id) {
-                setSelectedAgentIds(new Set());
-                return;
-            }
-            try {
-                const response = await fetch(
-                    `/api/agents/user?userId=${user.id}`
-                );
-                const data = await response.json();
-                if (Array.isArray(data)) {
-                    setSelectedAgentIds(new Set(data.map((agent: Agent) => agent.id)));
-                } else {
-                    setSelectedAgentIds(new Set());
-                }
-            } catch (error) {
-                setSelectedAgentIds(new Set());
-            }
-        };
-        fetchSelectedAgents();
-    }, [user?.id]);
-
-    const handleAgentSelect = (agentId: string) => {
-        setSelectedAgentIds((prev) => new Set([...prev, agentId]));
-    };
 
     if (loading) {
         return (
@@ -78,15 +50,9 @@ export default function AgentHub() {
     }
 
     return (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
             {agents.map((agent) => (
-                <div key={agent.id} className="h-full flex">
-                    <AgentCard
-                        agent={{ ...agent, graph_name: agent.graph_name || '' }}
-                        onSelect={handleAgentSelect}
-                        isSelected={selectedAgentIds.has(agent.id)}
-                    />
-                </div>
+                <AgentCard key={agent.id} agent={agent} />
             ))}
         </div>
     );

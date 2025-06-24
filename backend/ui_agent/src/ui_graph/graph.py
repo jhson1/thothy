@@ -5,6 +5,7 @@ import os
 from typing import Optional, Annotated, Sequence, TypedDict
 import json
 
+from langchain_openai import ChatOpenAI
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.messages import AIMessage, BaseMessage
 from langgraph.graph.message import add_messages
@@ -34,10 +35,11 @@ def get_llm() -> ChatGoogleGenerativeAI:
     """Get or initialize the LLM with shadcn tools bound."""
     global llm
     if llm is None:
-        llm = ChatGoogleGenerativeAI(
-            model="gemini-2.5-flash-preview-05-20",
-            temperature=0.5
-        )
+        llm = ChatOpenAI(model="gpt-4o-mini")
+        # llm = ChatGoogleGenerativeAI(
+        #     model="gemini-2.5-flash-preview-05-20",
+        #     temperature=0.5
+        # )
     return llm
 
 
@@ -71,6 +73,8 @@ async def call_model(state: AgentState):
     }
 
     push_ui_message(UI_COMPONENT_NAME, code, message=response)
+    logging.info(f"code: {code}")
+    logging.info(f"response: {response}")
 
     return {
         "messages": [response],
@@ -108,8 +112,10 @@ workflow.add_node("tools", tool_node)
 
 # Add edges - start at chatbot and can end after chatbot
 workflow.add_edge(START, "call_model")
-workflow.add_conditional_edges("call_model", should_continue, ["tools", END])
-workflow.add_edge("tools", END)
+workflow.add_edge("call_model", END)
+
+# workflow.add_conditional_edges("call_model", should_continue, ["tools", END])
+# workflow.add_edge("tools", END)
 
 # Compile graph
 graph = workflow.compile()

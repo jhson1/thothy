@@ -83,6 +83,7 @@ def get_search_params(search_api: str, search_api_config: Optional[Dict[str, Any
         "arxiv": ["load_max_docs", "get_full_documents", "load_all_available_meta"],
         "pubmed": ["top_k_results", "email", "api_key", "doc_content_chars_max"],
         "linkup": ["depth"],
+        "searxng": ["searx_host", "categories", "engines", "language", "time_range", "safesearch"],
     }
 
     # Get the list of accepted parameters for the given search API
@@ -159,7 +160,7 @@ Section {idx}: {section.name}
 {'=' * 60}
 Description:
 {section.description}
-Requires Research: 
+Requires Research:
 {section.research}
 
 Content:
@@ -181,7 +182,7 @@ async def tavily_search_async(search_queries):
             List[dict]: List of search responses from Tavily API, one per query. Each response has format:
                 {
                     'query': str, # The original search query
-                    'follow_up_questions': None,      
+                    'follow_up_questions': None,
                     'answer': None,
                     'images': list,
                     'results': [                     # List of search results
@@ -225,7 +226,7 @@ def perplexity_search(search_queries):
         List[dict]: List of search responses from Perplexity API, one per query. Each response has format:
             {
                 'query': str,                    # The original search query
-                'follow_up_questions': None,      
+                'follow_up_questions': None,
                 'answer': None,
                 'images': list,
                 'results': [                     # List of search results
@@ -322,7 +323,7 @@ async def exa_search(search_queries, max_characters: Optional[int] = None, num_r
         max_characters (int, optional): Maximum number of characters to retrieve for each result's raw content.
                                        If None, the text parameter will be set to True instead of an object.
         num_results (int): Number of search results per query. Defaults to 5.
-        include_domains (List[str], optional): List of domains to include in search results. 
+        include_domains (List[str], optional): List of domains to include in search results.
             When specified, only results from these domains will be returned.
         exclude_domains (List[str], optional): List of domains to exclude from search results.
             Cannot be used together with include_domains.
@@ -332,7 +333,7 @@ async def exa_search(search_queries, max_characters: Optional[int] = None, num_r
         List[dict]: List of search responses from Exa API, one per query. Each response has format:
             {
                 'query': str,                    # The original search query
-                'follow_up_questions': None,      
+                'follow_up_questions': None,
                 'answer': None,
                 'images': list,
                 'results': [                     # List of search results
@@ -531,7 +532,7 @@ async def arxiv_search_async(search_queries, load_max_docs=5, get_full_documents
         List[dict]: List of search responses from arXiv, one per query. Each response has format:
             {
                 'query': str,                    # The original search query
-                'follow_up_questions': None,      
+                'follow_up_questions': None,
                 'answer': None,
                 'images': [],
                 'results': [                     # List of search results
@@ -695,7 +696,7 @@ async def pubmed_search_async(search_queries, top_k_results=5, email=None, api_k
         List[dict]: List of search responses from PubMed, one per query. Each response has format:
             {
                 'query': str,                    # The original search query
-                'follow_up_questions': None,      
+                'follow_up_questions': None,
                 'answer': None,
                 'images': [],
                 'results': [                     # List of search results
@@ -846,6 +847,168 @@ async def linkup_search(search_queries, depth: Optional[str] = "standard"):
 
 
 @traceable
+async def searxng_search_async(search_queries, searx_host: str = None,
+                               categories: Optional[List[str]] = None, engines: Optional[List[str]] = None,
+                               language: str = "en", time_range: Optional[str] = None,
+                               safesearch: int = 1, num_results: int = 5):
+    """
+    Performs concurrent searches using SearXNG metasearch engine.
+
+    Args:
+        search_queries (List[str]): List of search queries to process
+        searx_host (str): SearXNG instance URL (default: uses SEARXNG_HOST env var or https://priv.au)
+        categories (List[str], optional): Search categories to use (e.g., ['general', 'science'])
+        engines (List[str], optional): Specific search engines to use (e.g., ['google', 'bing'])
+        language (str): Language code for search results (default: 'en')
+        time_range (str, optional): Time range filter ('day', 'month', 'year')
+        safesearch (int): Safe search setting (0=off, 1=moderate, 2=strict)
+        num_results (int): Maximum number of results per query (default: 5)
+
+    Returns:
+        List[dict]: List of search responses from SearXNG, one per query. Each response has format:
+            {
+                'query': str,                    # The original search query
+                'follow_up_questions': None,
+                'answer': None,
+                'images': [],
+                'results': [                     # List of search results
+                    {
+                        'title': str,            # Title of the search result
+                        'url': str,              # URL of the result
+                        'content': str,          # Content/snippet from the result
+                        'score': float,          # Relevance score
+                        'raw_content': str       # Full content if available
+                    },
+                    ...
+                ]
+            }
+    """
+    
+    # Set default searx_host from environment variable if not provided
+    if searx_host is None:
+        searx_host = os.environ.get("SEARXNG_HOST", "http://localhost:8888")
+
+    async def process_single_query(query):
+        try:
+            # Build search parameters
+            params = {
+                'q': query,
+                'format': 'json',
+                'language': language,
+                'safesearch': safesearch
+            }
+
+            # Add optional parameters
+            if categories:
+                params['categories'] = ','.join(categories)
+            if engines:
+                params['engines'] = ','.join(engines)
+            if time_range:
+                params['time_range'] = time_range
+
+            # Make request to SearXNG API
+            async with aiohttp.ClientSession() as session:
+                async with session.get(f"{searx_host}/search", params=params, timeout=30) as response:
+                    if response.status != 200:
+                        error_text = await response.text()
+                        print(
+                            f"SearXNG API error: {response.status}, {error_text}")
+                        return {
+                            'query': query,
+                            'follow_up_questions': None,
+                            'answer': None,
+                            'images': [],
+                            'results': [],
+                            'error': f"HTTP {response.status}: {error_text}"
+                        }
+
+                    data = await response.json()
+
+                    # Process results
+                    results = []
+                    search_results = data.get('results', [])
+
+                    # Limit results to num_results
+                    for i, result in enumerate(search_results[:num_results]):
+                        formatted_result = {
+                            'title': result.get('title', ''),
+                            'url': result.get('url', ''),
+                            'content': result.get('content', ''),
+                            # Decreasing score based on position
+                            'score': 1.0 - (i * 0.1),
+                            # SearXNG provides content
+                            'raw_content': result.get('content', '')
+                        }
+                        results.append(formatted_result)
+
+                    # Get images if available
+                    images = []
+                    if 'infoboxes' in data:
+                        for infobox in data['infoboxes']:
+                            if 'img_src' in infobox:
+                                images.append(infobox['img_src'])
+
+                    return {
+                        'query': query,
+                        'follow_up_questions': None,
+                        'answer': data.get('answers', [{}])[0].get('answer') if data.get('answers') else None,
+                        'images': images,
+                        'results': results
+                    }
+
+        except asyncio.TimeoutError:
+            error_msg = f"SearXNG search timed out for query: {query}"
+            print(error_msg)
+            return {
+                'query': query,
+                'follow_up_questions': None,
+                'answer': None,
+                'images': [],
+                'results': [],
+                'error': error_msg
+            }
+        except Exception as e:
+            error_msg = f"Error in SearXNG search for query '{query}': {str(e)}"
+            print(error_msg)
+            return {
+                'query': query,
+                'follow_up_questions': None,
+                'answer': None,
+                'images': [],
+                'results': [],
+                'error': error_msg
+            }
+
+    # Process queries with delays to respect rate limits
+    search_docs = []
+    for i, query in enumerate(search_queries):
+        try:
+            # Add delay between requests (0.5 second delay to be respectful)
+            if i > 0:
+                await asyncio.sleep(0.5)
+
+            result = await process_single_query(query)
+            search_docs.append(result)
+
+        except Exception as e:
+            error_msg = f"Error processing SearXNG query '{query}': {str(e)}"
+            print(error_msg)
+            search_docs.append({
+                'query': query,
+                'follow_up_questions': None,
+                'answer': None,
+                'images': [],
+                'results': [],
+                'error': error_msg
+            })
+
+            # Add additional delay if we encounter errors
+            await asyncio.sleep(1.0)
+
+    return search_docs
+
+
+@traceable
 async def duckduckgo_search(search_queries):
     """Perform searches using DuckDuckGo with improved rate limit handling
 
@@ -956,6 +1119,8 @@ async def select_and_execute_search(search_api: str, query_list: list[str], para
             search_results = await linkup_search(query_list, **params_to_pass)
         elif search_api == "googlesearch":
             search_results = await google_search_async(query_list, **params_to_pass)
+        elif search_api == "searxng":
+            search_results = await searxng_search_async(query_list, **params_to_pass)
         else:
             raise ValueError(f"Unsupported search API: {search_api}")
 
@@ -965,13 +1130,13 @@ async def select_and_execute_search(search_api: str, query_list: list[str], para
         # If all else fails, return an error message that can be used in the report
         return f"""
         [Search Error: Unable to retrieve information]
-        
+        # noqa: W293
         The search system encountered an error while trying to find information.
         Error details: {str(e)}
-        
+        # noqa: W293
         The following queries were attempted:
         {chr(10).join('- ' + q for q in query_list)}
-        
+        # noqa: W293
         Please proceed with general knowledge about the topic.
         """
 

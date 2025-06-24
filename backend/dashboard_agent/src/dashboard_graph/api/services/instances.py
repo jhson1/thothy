@@ -1,0 +1,4 @@
+from dashboard_graph.api.services.temp_file import TempFileService
+
+
+temp_file_service = TempFileService()

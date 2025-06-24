@@ -1,4 +1,0 @@
-crawl4ai
-aiohttp
-beautifulsoup4
-lxml

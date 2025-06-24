@@ -217,7 +217,7 @@ export function Thread() {
     stream.submit(
       { messages: [...toolMessages, newHumanMessage], context },
       {
-        streamMode: ["messages"],
+        streamMode: ["values"],
         optimisticValues: (prev) => ({
           ...prev,
           context,
@@ -243,7 +243,7 @@ export function Thread() {
     setFirstTokenReceived(false);
     stream.submit(undefined, {
       checkpoint: parentCheckpoint,
-      streamMode: ["messages"],
+      streamMode: ["values"],
     });
   };
 
@@ -346,7 +346,7 @@ export function Thread() {
       <div
         className={cn(
           "grid w-full grid-cols-[1fr_0fr] transition-all duration-500",
-          artifactOpen && "grid-cols-[3fr_2fr]"
+          artifactOpen && "grid-cols-[600px_1fr]"
         )}
       >
         <motion.div
@@ -453,7 +453,7 @@ export function Thread() {
                   {messages
                     .filter((m) => !m.id?.startsWith(DO_NOT_RENDER_ID_PREFIX))
                     // "run--" prefix is added by langgraph to the message id as stream mode is "messages"
-                    .filter((m) => !m.id?.startsWith("run--"))
+                    // .filter((m) => !m.id?.startsWith("run--"))
                     .map((message, index) =>
                       message.type === "human" ? (
                         <HumanMessage

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 import {
   AppBar,
   Toolbar,
@@ -16,29 +16,35 @@ import {
   IconButton,
   Divider,
   CircularProgress,
-} from '@mui/material';
-import { useAuth } from '../contexts/AuthContext';
-import { useRouter } from 'next/navigation';
-import AccountCircle from '@mui/icons-material/AccountCircle';
-import Logout from '@mui/icons-material/Logout';
-import Link from 'next/link';
+} from "@mui/material";
+import { useAuth } from "../contexts/AuthContext";
+import { useRouter } from "next/navigation";
+import AccountCircle from "@mui/icons-material/AccountCircle";
+import Logout from "@mui/icons-material/Logout";
+import Link from "next/link";
 
 interface HeaderProps {
-  currentView: 'inbox' | 'agent' | 'find' | 'staff' | 'team' | 'blog' | 'login' | 'agents' | 'project';
+  currentView:
+    | "inbox"
+    | "agent"
+    | "find"
+    | "staff"
+    | "team"
+    | "blog"
+    | "login"
+    | "agents"
+    | "task";
 }
 
 interface PricingPolicyData {
-  pricing_policy_id: string;
-  pricing_policy: {
-    name: string;
-  };
+  pricing_policy: string;
 }
 
 export default function Header({ currentView }: HeaderProps) {
   const { user, signIn, signOut, loading, supabase } = useAuth();
   const router = useRouter();
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [pricingPolicy, setPricingPolicy] = useState<string | null>(null);
   const [policyLoading, setPolicyLoading] = useState(true);
@@ -52,35 +58,30 @@ export default function Header({ currentView }: HeaderProps) {
     const fetchPricingPolicy = async () => {
       if (!user) {
         setPolicyLoading(false);
-        setPricingPolicy('Free');
+        setPricingPolicy("Free");
         return;
       }
 
       try {
-        // First try to get the user's pricing policy with a join
+        // Get the user's pricing policy directly
         const { data: policyData, error: policyError } = await supabase
-          .from('user_pricing_policy')
-          .select(`
-            pricing_policy_id,
-            pricing_policy (
-              name
-            )
-          `)
-          .eq('user_id', user.id)
+          .from("user_pricing_policy")
+          .select("pricing_policy")
+          .eq("user_id", user.id)
           .maybeSingle();
 
         // If there's no data or there's an error, default to Free
         if (policyError || !policyData) {
-          setPricingPolicy('Free');
+          setPricingPolicy("Free");
           setPolicyLoading(false);
           return;
         }
 
-        // Set the policy name from the joined data
-        setPricingPolicy(policyData.pricing_policy?.name || 'Free');
+        // Set the policy from the data
+        setPricingPolicy(policyData.pricing_policy || "Free");
         setPolicyLoading(false);
       } catch (error) {
-        setPricingPolicy('Free');
+        setPricingPolicy("Free");
         setPolicyLoading(false);
       }
     };
@@ -88,27 +89,28 @@ export default function Header({ currentView }: HeaderProps) {
     fetchPricingPolicy();
   }, [user, supabase]);
 
+  // Helper function for case-insensitive comparison
+  const isPolicyType = (policyType: string): boolean => {
+    return pricingPolicy?.toLowerCase() === policyType.toLowerCase();
+  };
+
   // Function to check if a menu should be visible based on pricing policy
-  const isMenuVisible = (menuType: 'project' | 'team' | 'staff') => {
-    if (policyLoading) return false;
-    
-    switch (pricingPolicy) {
-      case 'Enterprise':
-        return true;
-      case 'Business':
-        return menuType !== 'project';
-      case 'Personal':
-        return !['project', 'team'].includes(menuType);
-      case 'Free':
-      default:
-        return !['project', 'team', 'staff'].includes(menuType);
+  const isMenuVisible = (menuType: "task") => {
+    if (policyLoading || !pricingPolicy) return false;
+
+    if (isPolicyType("Enterprise")) {
+      return true;
+    } else if (isPolicyType("Business")) {
+      return menuType !== "task";
+    } else {
+      return !["task"].includes(menuType);
     }
   };
 
   const navButtonStyle = {
-    textTransform: 'none',
-    fontSize: '1rem',
-    minWidth: 'auto',
+    textTransform: "none",
+    fontSize: "1rem",
+    minWidth: "auto",
     px: 2,
   };
 
@@ -132,38 +134,43 @@ export default function Header({ currentView }: HeaderProps) {
 
   // Handle direct navigation
   const handleTothyClick = () => {
-    router.push('/');
+    router.push("/");
   };
 
   const handleAgentClick = () => {
-    router.push('/agent');
+    router.push("/agent");
   };
 
   const handleStaffClick = () => {
-    router.push('/staff');
+    router.push("/staff");
   };
 
   const handleBlogClick = () => {
-    router.push('/blog');
+    router.push("/blog");
   };
 
   const handleInboxClick = () => {
-    router.push('/inbox');
+    router.push("/inbox");
   };
 
   const handleTeamClick = () => {
-    router.push('/team');
+    router.push("/team");
   };
 
-  // New handler for Project menu
-  const handleProjectClick = () => {
-    router.push('/project');
+  // New handler for Task menu
+  const handleTaskClick = () => {
+    router.push("/task");
   };
 
   return (
-    <AppBar position="static" color="transparent" elevation={0} sx={{ borderBottom: '2px solid rgba(0, 0, 0, 0.12)' }}>
+    <AppBar
+      position="static"
+      color="transparent"
+      elevation={0}
+      sx={{ borderBottom: "2px solid rgba(0, 0, 0, 0.12)" }}
+    >
       <Container maxWidth="lg">
-        <Toolbar sx={{ justifyContent: 'space-between', px: { xs: 0, sm: 2 } }}>
+        <Toolbar sx={{ justifyContent: "space-between", px: { xs: 0, sm: 2 } }}>
           <Typography
             variant="h5"
             component="div"
@@ -171,23 +178,23 @@ export default function Header({ currentView }: HeaderProps) {
             sx={{
               fontFamily: "'Roboto Mono', monospace",
               fontWeight: 700,
-              cursor: 'pointer',
-              color: 'inherit',
+              cursor: "pointer",
+              color: "inherit",
             }}
           >
             Thothy
           </Typography>
 
-          <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-            {currentView !== 'login' && (
+          <Box sx={{ display: "flex", gap: 2, alignItems: "center" }}>
+            {currentView !== "login" && (
               <>
-                {user && (
+                {user && false && (
                   <Button
-                    color={currentView === 'inbox' ? 'primary' : 'inherit'}
+                    color={currentView === "inbox" ? "primary" : "inherit"}
                     onClick={handleInboxClick}
                     sx={{
                       ...navButtonStyle,
-                      fontWeight: currentView === 'inbox' ? 700 : 400,
+                      fontWeight: currentView === "inbox" ? 700 : 400,
                     }}
                   >
                     Inbox
@@ -195,69 +202,46 @@ export default function Header({ currentView }: HeaderProps) {
                 )}
 
                 <Button
-                  color={(currentView === 'agent' || currentView === 'find') ? 'primary' : 'inherit'}
+                  color={
+                    currentView === "agent" || currentView === "find"
+                      ? "primary"
+                      : "inherit"
+                  }
                   onClick={handleAgentClick}
                   sx={{
                     ...navButtonStyle,
-                    fontWeight: (currentView === 'agent' || currentView === 'find') ? 700 : 400,
+                    fontWeight:
+                      currentView === "agent" || currentView === "find"
+                        ? 700
+                        : 400,
                   }}
                 >
                   Agent
                 </Button>
 
-                {user && isMenuVisible('staff') && (
+                {user && isMenuVisible("task") && (
                   <Button
-                    color={currentView === 'staff' ? 'primary' : 'inherit'}
-                    onClick={handleStaffClick}
+                    color={currentView === "task" ? "primary" : "inherit"}
+                    onClick={handleTaskClick}
                     sx={{
                       ...navButtonStyle,
-                      fontWeight: currentView === 'staff' ? 700 : 400,
+                      fontWeight: currentView === "task" ? 700 : 400,
                     }}
                   >
-                    Staff
+                    Task
                   </Button>
                 )}
 
-                {/*
-                {user && isMenuVisible('team') && (
-                  <Button
-                    color={currentView === 'team' ? 'primary' : 'inherit'}
-                    onClick={handleTeamClick}
-                    sx={{
-                      ...navButtonStyle,
-                      fontWeight: currentView === 'team' ? 700 : 400,
-                    }}
-                  >
-                    Team
-                  </Button>
-                )}
-                */}
-
-                {user && isMenuVisible('project') && (
-                  <Button
-                    color={currentView === 'project' ? 'primary' : 'inherit'}
-                    onClick={handleProjectClick}
-                    sx={{
-                      ...navButtonStyle,
-                      fontWeight: currentView === 'project' ? 700 : 400,
-                    }}
-                  >
-                    Project
-                  </Button>
-                )}
-
-                {/*
                 <Button
-                  color={currentView === 'blog' ? 'primary' : 'inherit'}
+                  color={currentView === "blog" ? "primary" : "inherit"}
                   onClick={handleBlogClick}
                   sx={{
                     ...navButtonStyle,
-                    fontWeight: currentView === 'blog' ? 700 : 400,
+                    fontWeight: currentView === "blog" ? 700 : 400,
                   }}
                 >
                   Blog
                 </Button>
-                */}
               </>
             )}
 
@@ -275,8 +259,8 @@ export default function Header({ currentView }: HeaderProps) {
                   <Avatar
                     src={avatarUrl}
                     alt={displayName}
-                    sx={{ 
-                      width: 32, 
+                    sx={{
+                      width: 32,
                       height: 32,
                       bgcolor: theme.palette.primary.main,
                     }}
@@ -287,19 +271,19 @@ export default function Header({ currentView }: HeaderProps) {
                 <Menu
                   anchorEl={anchorEl}
                   anchorOrigin={{
-                    vertical: 'bottom',
-                    horizontal: 'right',
+                    vertical: "bottom",
+                    horizontal: "right",
                   }}
                   keepMounted
                   transformOrigin={{
-                    vertical: 'top',
-                    horizontal: 'right',
+                    vertical: "top",
+                    horizontal: "right",
                   }}
                   open={Boolean(anchorEl)}
                   onClose={handleMenuClose}
                 >
                   <MenuItem disabled>
-                    <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+                    <Box sx={{ display: "flex", flexDirection: "column" }}>
                       <Typography variant="body1" sx={{ fontWeight: 600 }}>
                         {displayName}
                       </Typography>
@@ -316,7 +300,7 @@ export default function Header({ currentView }: HeaderProps) {
                 </Menu>
               </>
             ) : loading ? (
-              <Box sx={{ display: 'flex', alignItems: 'center', ml: 2 }}>
+              <Box sx={{ display: "flex", alignItems: "center", ml: 2 }}>
                 <CircularProgress size={24} color="primary" sx={{ mr: 1 }} />
                 <Typography variant="body2" color="text.secondary">
                   Checking login...
@@ -337,4 +321,4 @@ export default function Header({ currentView }: HeaderProps) {
       </Container>
     </AppBar>
   );
-} 
+}

@@ -81,31 +81,58 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const initializeAuth = async () => {
             setLoading(true);
             try {
-                // Use getUser to authenticate the user
-                const { data: { user: supabaseUser }, error } = await supabase.auth.getUser();
-                const { data: { session } } = await supabase.auth.getSession();
-                if (error) throw error;
-                if (supabaseUser) {
-                    // Extract user metadata from Google OAuth
-                    const userMetadata = supabaseUser.user_metadata || {};
-                    // Update user with Google profile information
-                    const updatedUser = {
-                        ...supabaseUser,
-                        user_metadata: {
-                            ...userMetadata,
-                            full_name:
-                                userMetadata?.full_name ||
-                                userMetadata?.name ||
-                                supabaseUser.email,
-                            avatar_url:
-                                userMetadata?.avatar_url ||
-                                userMetadata?.picture,
-                        },
-                    };
-                    setSession(session);
-                    setUser(updatedUser);
-                    saveAuthState(updatedUser, session);
+                // First check if there's an active session
+                const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+                
+                if (sessionError) {
+                    // Handle session errors gracefully
+                    console.warn("Session error:", sessionError);
+                    setSession(null);
+                    setUser(null);
+                    localStorage.removeItem(STORAGE_KEY);
+                    return;
+                }
+
+                if (session?.user) {
+                    // Only try to get user if we have a valid session
+                    const { data: { user: supabaseUser }, error: userError } = await supabase.auth.getUser();
+                    
+                    if (userError) {
+                        // Handle cases where session exists but getUser fails
+                        console.warn("User fetch error:", userError);
+                        setSession(null);
+                        setUser(null);
+                        localStorage.removeItem(STORAGE_KEY);
+                        return;
+                    }
+
+                    if (supabaseUser) {
+                        // Extract user metadata from Google OAuth
+                        const userMetadata = supabaseUser.user_metadata || {};
+                        // Update user with Google profile information
+                        const updatedUser = {
+                            ...supabaseUser,
+                            user_metadata: {
+                                ...userMetadata,
+                                full_name:
+                                    userMetadata?.full_name ||
+                                    userMetadata?.name ||
+                                    supabaseUser.email,
+                                avatar_url:
+                                    userMetadata?.avatar_url ||
+                                    userMetadata?.picture,
+                            },
+                        };
+                        setSession(session);
+                        setUser(updatedUser);
+                        saveAuthState(updatedUser, session);
+                    } else {
+                        setSession(null);
+                        setUser(null);
+                        localStorage.removeItem(STORAGE_KEY);
+                    }
                 } else {
+                    // No session or user, clear everything
                     setSession(null);
                     setUser(null);
                     localStorage.removeItem(STORAGE_KEY);
@@ -116,6 +143,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                     }
                 }
             } catch (error) {
+                // Handle any unexpected errors gracefully
                 console.error("Error initializing auth:", error);
                 setSession(null);
                 setUser(null);
@@ -227,21 +255,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         try {
             // Use Supabase's signOut method which properly handles tokens
             const { error } = await supabase.auth.signOut();
-            if (error) throw error;
+            if (error && error.message !== "Auth session missing!") {
+                // Only throw error if it's not about missing session (which is expected during logout)
+                console.warn("Sign out error:", error);
+            }
             
             // Also call the API to clear server-side cookies
-            await fetch("/api/auth/signout", {
-                method: "POST",
-            });
+            try {
+                await fetch("/api/auth/signout", {
+                    method: "POST",
+                });
+            } catch (apiError) {
+                console.warn("Error clearing server-side cookies:", apiError);
+                // Don't throw here, we still want to complete the logout
+            }
 
+            // Always clear local state regardless of API errors
             setSession(null);
             setUser(null);
             localStorage.removeItem(STORAGE_KEY);
         } catch (error) {
             console.error("Error signing out:", error);
-            throw error;
+            // Even if sign out fails, clear local state to ensure user is logged out
+            setSession(null);
+            setUser(null);
+            localStorage.removeItem(STORAGE_KEY);
+            // Don't throw the error - we want logout to always succeed from UI perspective
         }
-    }, []);
+    }, [supabase.auth]);
 
     return (
         <AuthContext.Provider

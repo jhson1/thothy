@@ -36,10 +36,7 @@ function ContentCopyable({
       tooltip="Copy content"
       disabled={disabled}
     >
-      <AnimatePresence
-        mode="wait"
-        initial={false}
-      >
+      <AnimatePresence mode="wait" initial={false}>
         {copied ? (
           <motion.div
             key="check"
@@ -136,13 +133,13 @@ export function CommandBar({
 }) {
   if (isHumanMessage && isAiMessage) {
     throw new Error(
-      "Can only set one of isHumanMessage or isAiMessage to true, not both.",
+      "Can only set one of isHumanMessage or isAiMessage to true, not both."
     );
   }
 
   if (!isHumanMessage && !isAiMessage) {
     throw new Error(
-      "One of isHumanMessage or isAiMessage must be set to true.",
+      "One of isHumanMessage or isAiMessage must be set to true."
     );
   }
 
@@ -153,7 +150,7 @@ export function CommandBar({
       handleSubmitEdit === undefined)
   ) {
     throw new Error(
-      "If isHumanMessage is true, all of isEditing, setIsEditing, and handleSubmitEdit must be set.",
+      "If isHumanMessage is true, all of isEditing, setIsEditing, and handleSubmitEdit must be set."
     );
   }
 
@@ -190,10 +187,7 @@ export function CommandBar({
 
   return (
     <div className="flex items-center gap-2">
-      <ContentCopyable
-        content={content}
-        disabled={isLoading}
-      />
+      <ContentCopyable content={content} disabled={isLoading} />
       {isAiMessage && !!handleRegenerate && (
         <TooltipIconButton
           disabled={isLoading}

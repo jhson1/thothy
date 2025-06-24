@@ -27,6 +27,7 @@ class SearchAPI(Enum):
     LINKUP = "linkup"
     DUCKDUCKGO = "duckduckgo"
     GOOGLESEARCH = "googlesearch"
+    SEARXNG = "searxng"
 
 
 @dataclass(kw_only=True)
@@ -41,7 +42,7 @@ class Configuration:
     writer_provider: str = "google_genai"  # Defaults to google_genai as provider
     # Defaults to gemini-1.5-pro
     writer_model: str = "gemini-1.5-pro"
-    search_api: SearchAPI = SearchAPI.TAVILY  # Default to TAVILY
+    search_api: SearchAPI = SearchAPI.SEARXNG
     search_api_config: Optional[Dict[str, Any]] = None
 
     @classmethod

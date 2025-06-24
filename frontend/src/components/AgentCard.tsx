@@ -28,9 +28,6 @@ interface Agent {
 
 interface AgentCardProps {
   agent: Agent;
-  onSelect?: (agentId: string) => void;
-  isSelected?: boolean;
-  showUnselect?: boolean;
 }
 
 // Function to generate a consistent gradient based on agent name
@@ -57,94 +54,10 @@ const getGradientColors = (name: string): [string, string] => {
   return colorPairs[pairIndex];
 };
 
-export default function AgentCard({
-  agent,
-  onSelect,
-  isSelected: propIsSelected = false,
-  showUnselect = false,
-}: AgentCardProps) {
+export default function AgentCard({ agent }: AgentCardProps) {
   const router = useRouter();
   const { user } = useAuth();
-  const [isSelected, setIsSelected] = useState(propIsSelected);
   const supabase = createClient();
-
-  useEffect(() => {
-    const checkIfSelected = async () => {
-      if (!user) return;
-
-      try {
-        const { data, error } = await supabase
-          .from("staffs")
-          .select()
-          .eq("user_id", user.id)
-          .eq("agent_id", agent.id)
-          .maybeSingle();
-
-        if (error) throw error;
-        setIsSelected(!!data);
-      } catch (error) {
-        setIsSelected(false);
-      }
-    };
-
-    checkIfSelected();
-  }, [user, agent.id, supabase]);
-
-  const handleSelect = async () => {
-    if (!user) {
-      alert("Please login to select an agent");
-      return;
-    }
-
-    try {
-      if (isSelected) {
-        return;
-      }
-
-      const { error } = await supabase
-        .from("staffs")
-        .insert({
-          user_id: user.id,
-          agent_id: agent.id,
-        })
-        .select()
-        .single();
-
-      if (error) {
-        throw error;
-      }
-
-      setIsSelected(true);
-      if (onSelect) {
-        onSelect(agent.id);
-      }
-    } catch (error) {
-      alert("Failed to select agent. Please try again.");
-    }
-  };
-
-  const handleUnselect = async () => {
-    if (!user) return;
-
-    try {
-      const { error } = await supabase
-        .from("staffs")
-        .delete()
-        .eq("user_id", user.id)
-        .eq("agent_id", agent.id);
-
-      if (error) {
-        throw error;
-      }
-
-      setIsSelected(false);
-      if (onSelect) {
-        onSelect(agent.id);
-      }
-    } catch (error) {
-      alert("Failed to unselect agent. Please try again.");
-    }
-  };
 
   const handleCardClick = () => {
     if (agent.graph_name) {
@@ -173,23 +86,9 @@ export default function AgentCard({
       </CardContent>
       <CardFooter className="flex flex-col gap-2 p-4 mt-auto sticky bottom-0 bg-white z-10">
         <Button
-          variant={isSelected ? "secondary" : "default"}
-          className="w-full"
-          onClick={handleSelect}
-          disabled={isSelected}
-        >
-          {isSelected ? "Selected" : "Select"}
-        </Button>
-        <Button
           variant="outline"
           className="w-full"
-          onClick={() => {
-            if (agent.graph_name) {
-              router.push(`/agents/${agent.graph_name}`);
-            } else {
-              alert("This agent doesn't have a valid configuration");
-            }
-          }}
+          onClick={handleCardClick}
         >
           Run
         </Button>
