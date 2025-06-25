@@ -10,7 +10,6 @@ from urllib.parse import unquote
 from functools import wraps
 
 from exa_py import Exa
-# from linkup import LinkupClient  # Commented out
 from tavily import AsyncTavilyClient
 from duckduckgo_search import DDGS
 from bs4 import BeautifulSoup
@@ -24,8 +23,16 @@ from langchain_core.language_models import BaseChatModel
 
 from data_research_graph.state import Section
 
-T = TypeVar('T')
+from chronos import BaseChronosPipeline
+import torch
+CHRONOS_PIPELINE = BaseChronosPipeline.from_pretrained(
+    "amazon/chronos-t5-small",
+    device_map="cuda",  # use "cpu" for CPU inference
+    torch_dtype=torch.bfloat16,
+)
 
+
+T = TypeVar('T')
 
 def retry_with_exponential_backoff(
     max_retries: int = 5,
@@ -160,7 +167,7 @@ Section {idx}: {section.name}
 {'=' * 60}
 Description:
 {section.description}
-Requires Research:
+Requires Research: 
 {section.research}
 
 Content:
@@ -182,7 +189,7 @@ async def tavily_search_async(search_queries):
             List[dict]: List of search responses from Tavily API, one per query. Each response has format:
                 {
                     'query': str, # The original search query
-                    'follow_up_questions': None,
+                    'follow_up_questions': None,      
                     'answer': None,
                     'images': list,
                     'results': [                     # List of search results
@@ -226,7 +233,7 @@ def perplexity_search(search_queries):
         List[dict]: List of search responses from Perplexity API, one per query. Each response has format:
             {
                 'query': str,                    # The original search query
-                'follow_up_questions': None,
+                'follow_up_questions': None,      
                 'answer': None,
                 'images': list,
                 'results': [                     # List of search results
@@ -323,7 +330,7 @@ async def exa_search(search_queries, max_characters: Optional[int] = None, num_r
         max_characters (int, optional): Maximum number of characters to retrieve for each result's raw content.
                                        If None, the text parameter will be set to True instead of an object.
         num_results (int): Number of search results per query. Defaults to 5.
-        include_domains (List[str], optional): List of domains to include in search results.
+        include_domains (List[str], optional): List of domains to include in search results. 
             When specified, only results from these domains will be returned.
         exclude_domains (List[str], optional): List of domains to exclude from search results.
             Cannot be used together with include_domains.
@@ -333,7 +340,7 @@ async def exa_search(search_queries, max_characters: Optional[int] = None, num_r
         List[dict]: List of search responses from Exa API, one per query. Each response has format:
             {
                 'query': str,                    # The original search query
-                'follow_up_questions': None,
+                'follow_up_questions': None,      
                 'answer': None,
                 'images': list,
                 'results': [                     # List of search results
@@ -532,7 +539,7 @@ async def arxiv_search_async(search_queries, load_max_docs=5, get_full_documents
         List[dict]: List of search responses from arXiv, one per query. Each response has format:
             {
                 'query': str,                    # The original search query
-                'follow_up_questions': None,
+                'follow_up_questions': None,      
                 'answer': None,
                 'images': [],
                 'results': [                     # List of search results
@@ -696,7 +703,7 @@ async def pubmed_search_async(search_queries, top_k_results=5, email=None, api_k
         List[dict]: List of search responses from PubMed, one per query. Each response has format:
             {
                 'query': str,                    # The original search query
-                'follow_up_questions': None,
+                'follow_up_questions': None,      
                 'answer': None,
                 'images': [],
                 'results': [                     # List of search results
@@ -1494,3 +1501,117 @@ def init_model_with_provider(model_name: str, provider: str, **kwargs) -> BaseCh
         print(
             f"Error initializing model {model_name} with provider {provider}: {e}")
         raise
+
+
+def format_financial_table(data, title):
+    """Format financial data into readable table format.
+    
+    Handles different financial data types:
+    - Income Statement: quarters, revenue, net_income (billions)
+    - Balance Sheet: years, equity_ratios, debt_equity_ratios (percentages)
+    - Cash Flow Statement: years, operation, investment, financing (millions)
+    - Insider Trades: names, shares, percentages
+    
+    Args:
+        data: Financial data in various formats
+        title: Type of financial statement
+        
+    Returns:
+        Formatted string with table and explanations
+    """
+    if not data:
+        return f"No data available.\n\n"
+    
+    formatted = ""
+    
+    # Handle new income statement format with quarters, revenue, net_income
+    if title == "Income Statement" and isinstance(data, dict) and data.get("quarters"):
+        quarters = data.get("quarters", [])
+        revenue = data.get("revenue", [])
+        net_income = data.get("net_income", [])
+        
+        formatted += "| Quarter | Revenue (B) | Net Income (B) |\n|---------|-------------|----------------|\n"
+        
+        for i in range(len(quarters)):
+            quarter = quarters[i] if i < len(quarters) else "N/A"
+            rev = f"{revenue[i]:.2f}" if i < len(revenue) and isinstance(revenue[i], (int, float)) else "N/A"
+            net = f"{net_income[i]:.2f}" if i < len(net_income) and isinstance(net_income[i], (int, float)) else "N/A"
+            
+            formatted += f"| {quarter} | {rev} | {net} |\n"
+        
+        formatted += "\n*Values in billions of dollars*\n\n"
+    
+    # Handle new balance sheet format with years, equity_ratios, debt_equity_ratios
+    elif title == "Balance Sheet" and isinstance(data, dict) and data.get("years"):
+        years = data.get("years", [])
+        equity_ratios = data.get("equity_ratios", [])
+        debt_equity_ratios = data.get("debt_equity_ratios", [])
+        
+        formatted += "| Year | Equity Ratio (%) | Debt-to-Equity (%) |\n|------|------------------|--------------------|\n"
+        
+        for i in range(len(years)):
+            year = years[i] if i < len(years) else "N/A"
+            equity = f"{equity_ratios[i]:.2f}" if i < len(equity_ratios) and isinstance(equity_ratios[i], (int, float)) else "N/A"
+            debt_equity = f"{debt_equity_ratios[i]:.2f}" if i < len(debt_equity_ratios) and isinstance(debt_equity_ratios[i], (int, float)) else "N/A"
+            
+            formatted += f"| {year} | {equity} | {debt_equity} |\n"
+        
+        formatted += "\n*Equity Ratio = Shareholders Equity / Total Assets × 100*\n"
+        formatted += "*Debt-to-Equity = Total Liabilities / Shareholders Equity × 100*\n\n"
+    
+    # Handle new cash flow statement format with years, operation, investment, financing
+    elif title == "Cash Flow Statement" and isinstance(data, dict) and data.get("years"):
+        years = data.get("years", [])
+        operation = data.get("operation", [])
+        investment = data.get("investment", [])
+        financing = data.get("financing", [])
+        
+        formatted += "| Year | Operating (M) | Investing (M) | Financing (M) |\n|------|---------------|---------------|---------------|\n"
+        
+        for i in range(len(years)):
+            year = years[i] if i < len(years) else "N/A"
+            op = f"{operation[i]:.2f}" if i < len(operation) and isinstance(operation[i], (int, float)) else "N/A"
+            inv = f"{investment[i]:.2f}" if i < len(investment) and isinstance(investment[i], (int, float)) else "N/A"
+            fin = f"{financing[i]:.2f}" if i < len(financing) and isinstance(financing[i], (int, float)) else "N/A"
+            
+            formatted += f"| {year} | {op} | {inv} | {fin} |\n"
+        
+        formatted += "\n*Values in millions of dollars*\n"
+        formatted += "*Operating: Cash from business operations*\n"
+        formatted += "*Investing: Cash from investments and asset purchases*\n"
+        formatted += "*Financing: Cash from debt, equity, and dividend activities*\n\n"
+    
+    # Handle insider trades format with names, shares, percentages
+    elif title == "Insider Trades" and isinstance(data, dict) and data.get("names"):
+        names = data.get("names", [])
+        shares = data.get("shares", [])
+        percentages = data.get("percentages", [])
+        
+        formatted += "| Name | Shares | Percentage |\n|------|--------|------------|\n"
+        
+        for i in range(len(names)):
+            name = names[i] if i < len(names) else "N/A"
+            share_count = f"{shares[i]:,}" if i < len(shares) and isinstance(shares[i], (int, float)) else "N/A"
+            percentage = f"{percentages[i]:.2f}%" if i < len(percentages) and isinstance(percentages[i], (int, float)) else "N/A"
+            
+            formatted += f"| {name} | {share_count} | {percentage} |\n"
+        formatted += "\n"
+    
+    # Handle traditional format (fallback)
+    elif isinstance(data, list) and len(data) > 0:
+        # Get the most recent period
+        latest = data[0]
+        
+        formatted += "| Metric | Value |\n|--------|-------|\n"
+        for key, value in latest.items():
+            if key not in ['ticker', 'period', 'period_ending']:
+                # Format large numbers with commas
+                if isinstance(value, (int, float)) and abs(value) > 1000:
+                    formatted_value = f"{value:,.0f}"
+                else:
+                    formatted_value = str(value)
+                formatted += f"| {key.replace('_', ' ').title()} | {formatted_value} |\n"
+        
+        formatted += f"\n*Data as of: {latest.get('period_ending', 'N/A')}*\n\n"
+    
+    return formatted

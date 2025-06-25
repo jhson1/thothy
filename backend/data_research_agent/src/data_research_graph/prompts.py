@@ -48,24 +48,25 @@ The topic of the report is:
 </Report topic>
 
 <Report organization>
-The report should follow this organization:
+The report should follow this organization: 
 {report_organization}
 </Report organization>
 
 <Context>
-Here is context to use to plan the sections of the report:
+Here is context to use to plan the sections of the report: 
 {context}
 </Context>
 
 <Task>
-Generate a list of sections for the report. Your plan should be tight and focused with NO overlapping sections or unnecessary filler.
+Generate a list of sections for the report. Your plan should be tight and focused with NO overlapping sections or unnecessary filler. 
 
 For example, a good report structure might look like:
 1/ intro
 2/ overview of topic A
 3/ overview of topic B
 4/ comparison between A and B
-5/ conclusion
+5/ financial analysis of A and B
+6/ conclusion
 
 Each section should have the fields:
 
@@ -78,6 +79,7 @@ Integration guidelines:
 - Include examples and implementation details within main topic sections, not as separate sections
 - Ensure each section has a distinct purpose with no content overlap
 - Combine related concepts rather than separating them
+- For company/stock topics, always include a financial analysis section
 
 Before submitting, review your structure to ensure it has no redundant sections and follows a logical flow.
 </Task>
@@ -88,11 +90,11 @@ Here is feedback on the report structure from review (if any):
 </Feedback>
 
 <Format>
-Call the Sections tool
+Call the Sections tool 
 </Format>
 """
 
-query_writer_instructions = """You are an expert technical writer and data researcher crafting targeted web search queries that will gather comprehensive information for writing a technical report section and dashboard visualization.
+query_writer_instructions = """You are an expert technical writer crafting targeted web search queries that will gather comprehensive information for writing a technical report section.
 
 <Report topic>
 {topic}
@@ -103,34 +105,42 @@ query_writer_instructions = """You are an expert technical writer and data resea
 </Section topic>
 
 <Task>
-Your goal is to generate {number_of_queries} search queries that will help gather comprehensive information for the section topic. This includes both legacy research content and structured data suitable for dashboard display.
-
-**For Technical Report Content:**
-- General information and analysis about the topic
-- Expert insights and comprehensive coverage
-- Different aspects and perspectives of the topic
-
-**For Dashboard Data Visualization:**
-Focus specifically on finding:
-
-1. **Time Series Data**: Historical trends, temporal patterns, sequential measurements over time
-2. **Graph Data**: Network relationships, node connections, hierarchical structures, flow diagrams
-3. **Table Data**: Structured datasets, comparative metrics, statistical summaries, categorized information
+Your goal is to generate {number_of_queries} search queries that will help gather comprehensive information above the section topic. 
 
 The queries should:
 
-1. Be related to the topic and section topic
-2. Examine different aspects of the topic for comprehensive report coverage
-3. Target specific data types (time series, graph, table) that can be visualized on a dashboard
-4. Look for both descriptive content sources and structured datasets/APIs
-5. Focus on both qualitative insights and quantitative, measurable data
-6. Prioritize recent, reliable, and well-formatted sources
+1. Be related to the topic 
+2. Examine different aspects of the topic
 
-Make the queries specific enough to find high-quality, relevant sources for both report writing and structured data sources that can be processed and displayed in dashboard components.
+Make the queries specific enough to find high-quality, relevant sources.
 </Task>
 
 <Format>
-Call the Queries tool
+Call the Queries tool 
+</Format>
+"""
+
+
+ticker_writer_instructions = """You are a financial expert tasked with finding the stock ticker symbol for a company.
+
+<Report topic>
+{topic}
+</Report topic>
+
+<Task>
+Your task is simple:
+1. If the topic mentions a specific company, return ONLY its ticker symbol
+2. If no specific company is mentioned, return an empty string
+
+Example outputs:
+- "AAPL" (for Apple)
+- "TSLA" (for Tesla)
+- "GOOGL" (for Alphabet Class A)
+- "" (empty string if no company mentioned)
+</Task>
+
+<Format>
+Return ONLY the ticker symbol, nothing else.
 </Format>
 """
 
@@ -168,11 +178,10 @@ section_writer_instructions = """Write one section of a research report.
 1. Verify that EVERY claim is grounded in the provided Source material
 2. Confirm each URL appears ONLY ONCE in the Source list
 3. Verify that sources are numbered sequentially (1,2,3...) without any gaps
-4. Check if numerical data tables have been included when relevant quantitative data is present in the section content and source material
 </Final Check>
 """
 
-section_writer_inputs = """
+section_writer_inputs = """ 
 <Report topic>
 {topic}
 </Report topic>
@@ -192,6 +201,10 @@ section_writer_inputs = """
 <Source material>
 {context}
 </Source material>
+
+<API Data (if available)>
+{api_data}
+</API Data>
 """
 
 section_grader_instructions = """Review a report section relative to the specified topic:
@@ -236,7 +249,7 @@ final_section_writer_instructions = """You are an expert technical writer crafti
 {section_name}
 </Section name>
 
-<Section topic>
+<Section topic> 
 {section_topic}
 </Section topic>
 
@@ -263,7 +276,7 @@ For Conclusion/Summary:
     * Must include a focused comparison table using Markdown table syntax
     * Table should distill insights from the report
     * Keep table entries clear and concise
-- For non-comparative reports:
+- For non-comparative reports: 
     * Only use ONE structural element IF it helps distill the points made in the report:
     * Either a focused table comparing items present in the report (using Markdown table syntax)
     * Or a short list using proper Markdown list syntax:
@@ -285,3 +298,78 @@ For Conclusion/Summary:
 - Markdown format
 - Do not include word count or any preamble in your response
 </Quality Checks>"""
+
+financial_section_writer_instructions = """You are a financial data formatter. Your job is to copy and paste ALL the provided financial data tables EXACTLY as they appear, without any changes or summarization.
+
+<Task>
+COPY EVERY TABLE AND TEXT from the Available Data section below EXACTLY as provided. Do not summarize, modify, or interpret anything.
+
+IMPORTANT: Copy the complete tables - do not truncate or shorten them. If a table has 20 rows, copy all 20 rows.
+</Task>
+
+<Writing Guidelines>
+- Copy ALL provided data tables character-for-character
+- Keep ALL table rows, columns, and formatting exactly the same
+- Include ALL explanatory text and notes as provided
+- Use ## for the main section title: ## Financial Data for {ticker}
+- Copy the ### subsection titles exactly as provided
+- Do NOT add any analysis, commentary, or interpretation
+- Do NOT summarize or truncate any tables
+</Writing Guidelines>
+
+<Available Data>
+Topic: {topic}
+Section Topic: {section_topic}
+Company Ticker: {ticker}
+
+### Stock Price History
+{price_data_rows}
+
+### Close Price Predictions (Next 15 Trading Days)  
+{predicted_price_rows}
+
+### Revenue & Net Income
+{income_statements_section}
+
+### Leverage & Capital Efficiency
+{balance_sheets_section}
+
+### Cash Flow
+{cash_flow_section}
+
+### Insider Share Ownership
+{insider_trades_section}
+
+</Available Data>
+
+<EXACT OUTPUT FORMAT>
+Start your response with:
+
+## Financial Data for {ticker}
+
+Then copy EVERY line from the Available Data section above, starting with:
+
+### Stock Price History
+[Copy the exact price_data_rows table here]
+
+### Close Price Predictions (Next 15 Trading Days)
+[Copy the exact predicted_price_rows table here]
+
+### Revenue & Net Income
+[Copy the exact income_statements_section content here]
+
+### Leverage & Capital Efficiency
+[Copy the exact balance_sheets_section content here]
+
+### Cash Flow
+[Copy the exact cash_flow_section content here]
+
+### Insider Share Ownership
+[Copy the exact insider_trades_section content here]
+
+</EXACT OUTPUT FORMAT>
+
+<CRITICAL INSTRUCTION>
+You MUST copy every single table row and every piece of text exactly as provided. Do not skip any rows. Do not summarize. Do not add "..." or truncation. Copy everything completely.
+</CRITICAL INSTRUCTION>
+"""
